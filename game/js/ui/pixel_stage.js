@@ -69,7 +69,7 @@
       x: 40,
       w: 210,
       h: 165,
-      actionText: '[Space/클릭: 🏚️ 1호점 서버실 입장]',
+      actionText: '[E / Enter / 클릭: 🏚️ 1호점 서버실 입장]',
       onAction: () => {
         selectPixelStageOffice(0);
         if (typeof showToast === 'function') showToast('🏢 신림 1호점 서버실 내부로 입장했습니다.');
@@ -82,7 +82,7 @@
       x: 290,
       w: 220,
       h: 165,
-      actionText: '[Space/클릭: 🥕 중고 GPU 장터]',
+      actionText: '[E / Enter / 클릭: 🥕 중고 GPU 장터]',
       onAction: () => {
         const btn = document.querySelector('[data-tab=tab-procure]');
         if (btn) btn.click();
@@ -96,7 +96,7 @@
       x: 550,
       w: 230,
       h: 168,
-      actionText: '[Space/클릭: 🏢 구로 사업장 관리]',
+      actionText: '[E / Enter / 클릭: 🏢 구로 사업장 관리]',
       onAction: () => {
         const guroOfficeIdx = (window.state && Array.isArray(window.state.offices))
           ? window.state.offices.findIndex(o => o.presetId === 'guro_jisan')
@@ -117,7 +117,7 @@
       x: 820,
       w: 230,
       h: 170,
-      actionText: '[Space/클릭: 🏛️ 지원사업/VC 피칭]',
+      actionText: '[E / Enter / 클릭: 🏛️ 지원사업/VC 피칭]',
       onAction: () => {
         const btn = document.querySelector('[data-tab=tab-finance]');
         if (btn) btn.click();
@@ -131,7 +131,7 @@
       x: 1090,
       w: 260,
       h: 168,
-      actionText: '[Space/클릭: 👥 인재 채용 & 복지]',
+      actionText: '[E / Enter / 클릭: 👥 인재 채용 & 복지]',
       onAction: () => {
         const btn = document.querySelector('[data-tab=tab-hr]');
         if (btn) btn.click();
@@ -896,6 +896,13 @@
     if (typeof document === 'undefined') return;
     const canvas = document.getElementById('pixel-stage-canvas');
     if (!canvas) return;
+
+    // Skip canvas draw when stage is collapsed to save resources
+    const dock = document.querySelector('.pixel-stage-dock');
+    if (dock && dock.classList.contains('collapsed')) {
+      return;
+    }
+
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
 
@@ -914,7 +921,7 @@
 
       const titleEl = document.getElementById('pixel-stage-title');
       if (titleEl) {
-        titleEl.textContent = '🕹️ 🗺️ 서울 스타트업 상가 거리 (A/D 키 또는 클릭 이동 · [Space] 상가 진입)';
+        titleEl.textContent = '🕹️ 🗺️ 서울 스타트업 상가 거리 (A/D 키 또는 클릭 이동 · [E / Enter] 상가 진입 · 더블클릭 빠른이동)';
       }
     } else {
       if (!Array.isArray(st.offices) || st.offices.length === 0) return;
@@ -983,13 +990,69 @@
     if (tabBar.innerHTML !== html) tabBar.innerHTML = html;
   }
 
+  // Stage Viewport Collapse/Expand Toggle
+  function toggleStageCollapse(forceState) {
+    if (typeof document === 'undefined') return;
+    const dock = document.querySelector('.pixel-stage-dock');
+    const btn = document.getElementById('btn-toggle-stage');
+    if (!dock) return;
+
+    const shouldCollapse = (typeof forceState === 'boolean')
+      ? forceState
+      : !dock.classList.contains('collapsed');
+
+    if (shouldCollapse) {
+      dock.classList.add('collapsed');
+      if (btn) {
+        btn.textContent = '▼ 픽셀 화면 펼치기';
+        btn.title = '픽셀 화면 펼치기';
+      }
+    } else {
+      dock.classList.remove('collapsed');
+      if (btn) {
+        btn.textContent = '▲ 화면 접기';
+        btn.title = '화면 접기';
+      }
+    }
+
+    try {
+      localStorage.setItem('stageCollapsed', shouldCollapse ? 'true' : 'false');
+    } catch (e) {}
+
+    if (window.state) {
+      window.state.stageCollapsed = shouldCollapse;
+    }
+  }
+
+  function initStageCollapse() {
+    if (typeof document === 'undefined') return;
+    let saved = false;
+    try {
+      saved = localStorage.getItem('stageCollapsed') === 'true';
+    } catch (e) {}
+    if (window.state && typeof window.state.stageCollapsed === 'boolean') {
+      saved = window.state.stageCollapsed;
+    }
+    if (saved) {
+      toggleStageCollapse(true);
+    }
+    const btn = document.getElementById('btn-toggle-stage');
+    if (btn) {
+      btn.onclick = () => toggleStageCollapse();
+    }
+  }
+
   // Canvas Click & Keyboard Controls setup
   if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-    window.addEventListener('DOMContentLoaded', () => {
-      const canvas = document.getElementById('pixel-stage-canvas');
-      if (canvas) {
-        canvas.addEventListener('click', (e) => {
-          if (stageMode === 'street') {
+    if (typeof window.addEventListener === 'function') {
+      window.addEventListener('DOMContentLoaded', () => {
+        initStageCollapse();
+
+        const canvas = document.getElementById('pixel-stage-canvas');
+        if (canvas) {
+          // Fast Travel: Instant Teleportation on Double-Click
+          canvas.addEventListener('dblclick', (e) => {
+            if (stageMode !== 'street') return;
             const rect = canvas.getBoundingClientRect();
             const scaleX = STAGE_W / rect.width;
             const scaleY = STAGE_H / rect.height;
@@ -999,56 +1062,136 @@
 
             const clickedB = STREET_BUILDINGS.find(b => worldClickX >= b.x && worldClickX <= b.x + b.w && clickY <= 245);
             if (clickedB) {
-              streetPlayer.targetX = clickedB.x + clickedB.w / 2;
-              streetPlayer.targetY = 215;
-              if (Math.abs(streetPlayer.x - (clickedB.x + clickedB.w / 2)) < 110) {
-                clickedB.onAction();
+              const destX = clickedB.x + clickedB.w / 2;
+              streetPlayer.x = destX;
+              streetPlayer.y = 215;
+              streetPlayer.targetX = null;
+              streetPlayer.targetY = null;
+              streetPlayer.isMoving = false;
+              streetPlayer.nearBuilding = clickedB;
+
+              // Instantly snap camera to frame founder
+              camX = Math.max(0, Math.min(STREET_W - STAGE_W, streetPlayer.x - STAGE_W / 2));
+
+              // Teleport particles
+              for (let p = 0; p < 10; p++) {
+                particles.push({
+                  x: streetPlayer.x,
+                  y: streetPlayer.y,
+                  vx: (Math.random() - 0.5) * 5,
+                  vy: (Math.random() - 0.5) * 5,
+                  color: '#38bdf8',
+                  size: 3,
+                  life: 20
+                });
+              }
+
+              spawnStageFloatingText('⚡ 초고속 이동!', '#38bdf8', Math.max(60, Math.min(STAGE_W - 60, streetPlayer.x - camX)), Math.max(60, streetPlayer.y - 25));
+              clickedB.onAction();
+            } else {
+              const destX = Math.max(30, Math.min(STREET_W - 30, worldClickX));
+              const destY = Math.max(195, Math.min(245, clickY));
+              streetPlayer.x = destX;
+              streetPlayer.y = destY;
+              streetPlayer.targetX = null;
+              streetPlayer.targetY = null;
+              streetPlayer.isMoving = false;
+
+              // Recalculate nearest building
+              let nearest = null;
+              let minDist = 95;
+              STREET_BUILDINGS.forEach(b => {
+                const centerX = b.x + b.w / 2;
+                const dist = Math.abs(streetPlayer.x - centerX);
+                if (dist < minDist) {
+                  nearest = b;
+                  minDist = dist;
+                }
+              });
+              streetPlayer.nearBuilding = nearest;
+
+              // Instantly snap camera to founder
+              camX = Math.max(0, Math.min(STREET_W - STAGE_W, streetPlayer.x - STAGE_W / 2));
+
+              // Teleport particles
+              for (let p = 0; p < 8; p++) {
+                particles.push({
+                  x: streetPlayer.x,
+                  y: streetPlayer.y,
+                  vx: (Math.random() - 0.5) * 4,
+                  vy: (Math.random() - 0.5) * 4,
+                  color: '#67e8f9',
+                  size: 3,
+                  life: 18
+                });
+              }
+
+              spawnStageFloatingText('⚡ 순간이동!', '#38bdf8', Math.max(60, Math.min(STAGE_W - 60, streetPlayer.x - camX)), Math.max(60, streetPlayer.y - 25));
+            }
+          });
+
+          canvas.addEventListener('click', (e) => {
+            if (stageMode === 'street') {
+              const rect = canvas.getBoundingClientRect();
+              const scaleX = STAGE_W / rect.width;
+              const scaleY = STAGE_H / rect.height;
+              const clickX = (e.clientX - rect.left) * scaleX;
+              const clickY = (e.clientY - rect.top) * scaleY;
+              const worldClickX = clickX + camX;
+
+              const clickedB = STREET_BUILDINGS.find(b => worldClickX >= b.x && worldClickX <= b.x + b.w && clickY <= 245);
+              if (clickedB) {
+                streetPlayer.targetX = clickedB.x + clickedB.w / 2;
+                streetPlayer.targetY = 215;
+                if (Math.abs(streetPlayer.x - (clickedB.x + clickedB.w / 2)) < 110) {
+                  clickedB.onAction();
+                }
+              } else {
+                streetPlayer.targetX = Math.max(30, Math.min(STREET_W - 30, worldClickX));
+                streetPlayer.targetY = Math.max(195, Math.min(245, clickY));
               }
             } else {
-              streetPlayer.targetX = Math.max(30, Math.min(STREET_W - 30, worldClickX));
-              streetPlayer.targetY = Math.max(195, Math.min(245, clickY));
+              const st = window.state;
+              if (!st || !st.offices[selectedOfficeIdx]) return;
+              const off = st.offices[selectedOfficeIdx];
+              if (off.isTripped && typeof window.resetOfficeBreaker === 'function') {
+                window.resetOfficeBreaker(off.uid);
+                spawnStageFloatingText('🔌 차단기 복구 완료!', '#38bdf8', 350, 110);
+              } else {
+                spawnStageFloatingText('⚡ 서버실 점검 완료!', '#facc15', 380, 140);
+              }
             }
-          } else {
-            const st = window.state;
-            if (!st || !st.offices[selectedOfficeIdx]) return;
-            const off = st.offices[selectedOfficeIdx];
-            if (off.isTripped && typeof window.resetOfficeBreaker === 'function') {
-              window.resetOfficeBreaker(off.uid);
-              spawnStageFloatingText('🔌 차단기 복구 완료!', '#38bdf8', 350, 110);
-            } else {
-              spawnStageFloatingText('⚡ 서버실 점검 완료!', '#facc15', 380, 140);
+          });
+        }
+
+        window.addEventListener('keydown', (e) => {
+          if (stageMode !== 'street') return;
+          if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
+
+          if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+            keysDown.left = true;
+          } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+            keysDown.right = true;
+          } else if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+            keysDown.up = true;
+          } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+            keysDown.down = true;
+          } else if (e.code === 'KeyE' || e.code === 'Enter') {
+            if (streetPlayer.nearBuilding) {
+              e.preventDefault();
+              streetPlayer.nearBuilding.onAction();
             }
           }
         });
-      }
 
-      window.addEventListener('keydown', (e) => {
-        if (stageMode !== 'street') return;
-        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
-
-        if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
-          keysDown.left = true;
-        } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
-          keysDown.right = true;
-        } else if (e.code === 'ArrowUp' || e.code === 'KeyW') {
-          keysDown.up = true;
-        } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
-          keysDown.down = true;
-        } else if (e.code === 'Space' || e.code === 'KeyE') {
-          if (streetPlayer.nearBuilding) {
-            e.preventDefault();
-            streetPlayer.nearBuilding.onAction();
-          }
-        }
+        window.addEventListener('keyup', (e) => {
+          if (e.code === 'ArrowLeft' || e.code === 'KeyA') keysDown.left = false;
+          if (e.code === 'ArrowRight' || e.code === 'KeyD') keysDown.right = false;
+          if (e.code === 'ArrowUp' || e.code === 'KeyW') keysDown.up = false;
+          if (e.code === 'ArrowDown' || e.code === 'KeyS') keysDown.down = false;
+        });
       });
-
-      window.addEventListener('keyup', (e) => {
-        if (e.code === 'ArrowLeft' || e.code === 'KeyA') keysDown.left = false;
-        if (e.code === 'ArrowRight' || e.code === 'KeyD') keysDown.right = false;
-        if (e.code === 'ArrowUp' || e.code === 'KeyW') keysDown.up = false;
-        if (e.code === 'ArrowDown' || e.code === 'KeyS') keysDown.down = false;
-      });
-    });
+    }
   }
 
   window.renderPixelStage = renderPixelStage;
@@ -1056,4 +1199,5 @@
   window.selectPixelStageStreet = selectPixelStageStreet;
   window.selectPixelStageOffice = selectPixelStageOffice;
   window.spawnStageFloatingText = spawnStageFloatingText;
+  window.toggleStageCollapse = toggleStageCollapse;
 })();

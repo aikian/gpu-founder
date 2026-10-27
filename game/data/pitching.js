@@ -36,7 +36,8 @@ window.GAME_DATA.pitchJudges = {
       honest: 5
     },
     metricFailPenalty: -10,
-    specialRuleDesc: '"그래서 매출은요?" 관련 핵심 지표 미달 시 -10점 감점'
+    noVisionPenalty: -7,
+    specialRuleDesc: '비즈니스 비전/스케일업 야성이 결여된 안이한 답변 시 사업성 감점(-7점), 지표 미달 시 압박'
   },
   lee: {
     id: 'lee',
@@ -82,7 +83,7 @@ const pitchProgramsList = [
     requireExpr: '!state.flags.bizRegistered',
     requireDesc: '사업자 미등록 (예비창업자 신분)',
     questionCount: 3,
-    passScore: 65,
+    passScore: 72,
     baseAmount: 50000000,
     reward: 50000000,
     equityDilution: 0,

@@ -2260,5 +2260,238 @@ window.GAME_DATA.events = [
         "result": "정부 과제 대신 빅테크 고객사 유치에 집중하기로 했습니다."
       }
     ]
+  },
+  {
+    "id": "qte_power_overload",
+    "category": "emergency",
+    "title": "🚨 [긴급 8초 QTE] 서버실 메인 배전반 과전류 스파크 & 화재 경보!",
+    "text": "\"콰과광! 퍽!\" 새벽 2시, 서버실 메인 배전반에서 눈부신 스파크와 함께 시커먼 연기가 피어오르고 소방 화재경보기가 요란하게 울립니다! 차단기 부품이 타들어가고 있어 8초 내에 조치하지 않으면 랙 전체가 전소됩니다!",
+    "isQte": true,
+    "timeoutSeconds": 8,
+    "timeoutChoiceIdx": 3,
+    "trigger": {
+      "minMonth": 4,
+      "chancePerMonth": 0.08,
+      "cooldownMonths": 10,
+      "require": "offices.length > 0 && totalTflops >= 30"
+    },
+    "choices": [
+      {
+        "label": "[A] 대표가 직접 드라이버와 절연장갑 들고 현장 급파",
+        "desc": "불꽃 튀는 배전반으로 뛰어들어 수동 메인 레버를 강제로 내립니다. (대표 체력/스트레스 소모, 성공 시 GPU 전량 보존)",
+        "outcomes": [
+          {
+            "chance": 0.80,
+            "effects": {
+              "ceoStress": 20,
+              "ceoHealth": -10,
+              "morale": 10
+            },
+            "result": "대표의 목숨을 건 육탄 저지로 배전반 화재를 간발의 차로 막았습니다! GPU 랙이 기적적으로 100% 무사합니다. 직원들이 대표의 결단력에 경의를 표합니다."
+          },
+          {
+            "chance": 0.20,
+            "effects": {
+              "ceoStress": 35,
+              "ceoHealth": -25,
+              "money": -1500000
+            },
+            "result": "스파크 파편에 손목을 데이고 감전 충격을 입었으나 차단기 레버를 내리는 데 성공했습니다! 응급실 치료비가 지출되었으나 하드웨어는 지켜냈습니다."
+          }
+        ]
+      },
+      {
+        "label": "[B] 전기공사 야간 긴급출동 핫라인 호출",
+        "desc": "출장비 350만 원을 지불하고 특고압 전문 기술자 긴급 출동을 요청합니다.",
+        "cost": 3500000,
+        "effects": {
+          "ceoStress": 5,
+          "creditScore": 5
+        },
+        "result": "전문 엔지니어가 긴급 출동하여 화재 확산 전 안전하게 배전반 바이패스를 연결하고 노후 부품을 교체했습니다. 큰 손실 없이 위기를 넘겼습니다."
+      },
+      {
+        "label": "[C] 원격 BMS 다운그레이드 / 전 노드 비상 셧다운",
+        "desc": "원격 관리 콘솔에서 전원 공급을 30%로 강제 스로틀링하고 가동 중인 AI 세션을 강제 종료합니다.",
+        "effects": {
+          "reputation": -10,
+          "morale": -8,
+          "damageRandomGpu": {
+            "count": 1,
+            "damage": 30
+          }
+        },
+        "result": "화재는 모면했으나 학습 중이던 고객사 AI 작업 세션이 비정상 종료되어 강력한 항의와 SLA 페널티가 발생했습니다."
+      },
+      {
+        "label": "⏱️ [시간 초과 / 대응 실패] 8초 동안 아무 조치도 취하지 못함",
+        "desc": "우왕좌왕하는 사이 배전반이 폭발하며 랙으로 불길이 옮겨붙습니다!",
+        "isTimeout": true,
+        "effects": {
+          "breakRandomGpu": 2,
+          "money": -5000000,
+          "ceoStress": 40,
+          "reputation": -20,
+          "morale": -20
+        },
+        "result": "쾅! 배전반 폭발로 GPU 2대가 전소되고 소방서가 출동했습니다. 소화 약제와 그을음으로 수백만 원의 청소 및 복구비가 청구되었습니다!"
+      }
+    ]
+  },
+  {
+    "id": "qte_cooling_fan_failure",
+    "category": "emergency",
+    "title": "🚨 [긴급 8초 QTE] 서버실 칠러 펌프 축 파손! 코어 98°C 열폭주!",
+    "text": "\"콰지직! 펑!\" 서버실 냉각수 메인 순환 펌프 축이 피로 파괴로 박살 나며 냉각수 탱크 압력이 급상승합니다! 랙 상단에서 냉각수가 뿜어져 나오고, 모니터링 콘솔에 GPU 코어 온도 98°C 초과 경보가 붉게 점멸합니다! 남은 시간 8초!",
+    "isQte": true,
+    "timeoutSeconds": 8,
+    "timeoutChoiceIdx": 3,
+    "trigger": {
+      "minMonth": 6,
+      "chancePerMonth": 0.08,
+      "cooldownMonths": 10,
+      "require": "offices.length > 0 && totalTflops >= 40"
+    },
+    "choices": [
+      {
+        "label": "[A] 대표가 직접 공업용 선풍기 들고 밸브 수동 잠금 사투",
+        "desc": "비산하는 냉각수를 온몸으로 맞으며 비상 바이패스 밸브를 손으로 잠그고 대형 송풍기를 가동합니다.",
+        "outcomes": [
+          {
+            "chance": 0.80,
+            "effects": {
+              "ceoStress": 22,
+              "ceoHealth": -12,
+              "morale": 12
+            },
+            "result": "대표가 흠뻑 젖은 채 맨손으로 비상 밸브를 돌려 잠그고 열폭주를 92°C에서 기적적으로 멈췄습니다! 장비 손상 없이 랙 전체를 구출했습니다."
+          },
+          {
+            "chance": 0.20,
+            "effects": {
+              "ceoStress": 30,
+              "ceoHealth": -20,
+              "damageRandomGpu": {
+                "count": 1,
+                "damage": 35
+              }
+            },
+            "result": "젖은 바닥에 미끄러져 타박상을 입었으나 밸브를 잠그는 데 성공했습니다. 랙 하단 GPU 1대에 냉각수가 일부 튀어 내구도가 깎였습니다."
+          }
+        ]
+      },
+      {
+        "label": "[B] 데이터센터 공조 전문 유지보수팀 야간 핫라인 호출",
+        "desc": "유지보수비 400만 원을 지급하고 스페어 펌프를 실은 전문 공조 기동대를 즉시 투입합니다.",
+        "cost": 4000000,
+        "effects": {
+          "ceoStress": 5,
+          "creditScore": 5
+        },
+        "result": "공조 전문팀이 10분 만에 도착해 스페어 펌프를 직결하고 열을 식혔습니다. 단 하나의 칩도 타지 않고 완벽하게 복구되었습니다."
+      },
+      {
+        "label": "[C] 원격 GPU 클럭 강제 언더볼팅 & 비상 클램프 발동",
+        "desc": "모든 GPU의 전력 제한을 40%로 급격히 떨어뜨리고 클라우드 대기열 작업을 절반 취소합니다.",
+        "effects": {
+          "money": -2000000,
+          "reputation": -12,
+          "ceoStress": 12
+        },
+        "result": "온도는 진정되었으나 연산 속도가 급락해 실시간 추론 API가 대량 타임아웃을 냈습니다. 고객사 위약금 200만 원이 발생했습니다."
+      },
+      {
+        "label": "⏱️ [시간 초과 / 대응 실패] 8초 동안 아무 조치도 취하지 못함",
+        "desc": "온도가 105°C를 넘어서며 솔더볼이 녹아내리고 핵심 GPU가 사망합니다!",
+        "isTimeout": true,
+        "effects": {
+          "breakRandomGpu": 1,
+          "damageRandomGpu": {
+            "count": 2,
+            "damage": 45
+          },
+          "ceoStress": 38,
+          "reputation": -25
+        },
+        "result": "푸쉬익! 100°C가 넘는 고열 속에 주력 GPU 1대가 영구 벽돌(사망) 처리되었고 인접 카드 2대가 열 손상을 입었습니다!"
+      }
+    ]
+  },
+  {
+    "id": "qte_ransomware_attack",
+    "category": "emergency",
+    "title": "🚨 [긴급 8초 QTE] 해외 랜섬웨어 인젝션! 스토리지 실시간 암호화 중!",
+    "text": "\"삐- 삐- 삐-\" 보안 관제 대시보드가 새빨갛게 물들며 알림음이 울립니다! 동구권 해커 그룹이 노드 관리자 API 토큰을 탈취해 모든 고객사 파운데이션 모델 체크포인트와 학습 데이터를 .locked 확장자로 실시간 암호화하고 있습니다! 암호화 진행률 85%... 남은 시간 8초!",
+    "isQte": true,
+    "timeoutSeconds": 8,
+    "timeoutChoiceIdx": 3,
+    "trigger": {
+      "minMonth": 8,
+      "chancePerMonth": 0.08,
+      "cooldownMonths": 12,
+      "require": "totalTflops >= 80"
+    },
+    "choices": [
+      {
+        "label": "[A] 대표가 직접 전산실로 전력 질주해 백본 광케이블 물리적 절단",
+        "desc": "소프트웨어 명령을 기다릴 시간조차 없습니다! 대표가 전산실로 뛰어가 메인 백본 스위치의 광케이블을 맨손으로 뽑아 물리적으로 격리합니다.",
+        "outcomes": [
+          {
+            "chance": 0.85,
+            "effects": {
+              "ceoStress": 20,
+              "ceoHealth": -10,
+              "money": -500000,
+              "morale": 10
+            },
+            "result": "\"딱!\" 광케이블을 뽑아내며 랜섬웨어 전파를 89% 지점에서 기적적으로 차단했습니다! 광케이블 교체비 50만 원만 들고 고객사 데이터 90%를 온전히 보존했습니다."
+          },
+          {
+            "chance": 0.15,
+            "effects": {
+              "ceoStress": 35,
+              "ceoHealth": -15,
+              "money": -3000000
+            },
+            "result": "케이블을 너무 거칠게 뽑다가 고가의 코어 스위치 모듈 포트가 함께 파손되었습니다. 하드웨어 수리비 300만 원이 지출되었습니다."
+          }
+        ]
+      },
+      {
+        "label": "[B] 침해사고 대응 전문 화이트해커팀(CERT) 긴급 계약",
+        "desc": "긴급 방어 수수료 500만 원을 송금하고 전문 보안팀에 원격 보안 터널을 열어 역추적 및 백도어 무력화를 위임합니다.",
+        "cost": 5000000,
+        "effects": {
+          "reputation": 15,
+          "creditScore": 10,
+          "ceoStress": 5
+        },
+        "result": "화이트해커팀이 3분 만에 C2 서버와의 통신을 차단하고 복호화 마스터 키를 확보했습니다! 오히려 '철통 보안 입증'으로 대외 평판이 상승했습니다."
+      },
+      {
+        "label": "[C] 원격 전체 클러스터 긴급 셧다운 & 콜드 스토리지 롤백",
+        "desc": "전 노드 전원을 내리고 어제 밤 백업 시점으로 강제 롤백합니다. 오늘 작업 중이던 모든 AI 학습 진행도가 날아갑니다.",
+        "effects": {
+          "reputation": -18,
+          "money": -3000000,
+          "morale": -12,
+          "ceoStress": 15
+        },
+        "result": "랜섬웨어는 제거되었으나 고객사들의 24시간 치 학습 데이터가 소실되어 거센 위약금 청구와 원망을 샀습니다."
+      },
+      {
+        "label": "⏱️ [시간 초과 / 대응 실패] 8초 동안 아무 조치도 취하지 못함",
+        "desc": "암호화 100% 완료! 해커가 3,000만 원 상당의 비트코인을 요구하며 모든 데이터가 잠깁니다!",
+        "isTimeout": true,
+        "effects": {
+          "money": -15000000,
+          "reputation": -30,
+          "creditScore": -35,
+          "ceoStress": 45,
+          "morale": -25
+        },
+        "result": "전체 데이터가 영구 암호화되었습니다! 협상 끝에 1,500만 원의 복구 비용을 갈취당했고, 신뢰도 추락으로 주요 고객사들이 계약을 해지했습니다!"
+      }
+    ]
   }
 ];

@@ -9,6 +9,142 @@ window.Systems = window.Systems || {};
 (function () {
   let _activeEvent = null;
   let _prevSpeedBeforeModal = 1;
+  let _qteTimerInterval = null;
+  let _qteTimeRemaining = 0;
+  let _qteTotalTime = 8;
+
+  /**
+   * QTE 카운트다운 타이머 정지 및 관련 UI 정리
+   */
+  function clearQteTimer() {
+    if (_qteTimerInterval) {
+      clearInterval(_qteTimerInterval);
+      _qteTimerInterval = null;
+    }
+    _qteTimeRemaining = 0;
+    if (typeof document !== 'undefined') {
+      const qteEl = document.getElementById('qte-active-bar-wrap');
+      if (qteEl) qteEl.remove();
+    }
+  }
+
+  /**
+   * 긴급 위기 8초 QTE 타이머 가동 및 모달 내 카운트다운 게이지 주입
+   * @param {Object} ev
+   */
+  function startQteCountdown(ev) {
+    clearQteTimer();
+    _qteTotalTime = (typeof ev.timeoutSeconds === 'number' && ev.timeoutSeconds > 0) ? ev.timeoutSeconds : 8;
+    _qteTimeRemaining = _qteTotalTime;
+
+    if (typeof document === 'undefined') return;
+
+    const modalBody = document.getElementById('event-modal-body') || document.querySelector('.event-modal-body');
+    if (!modalBody) return;
+
+    const qteEl = document.createElement('div');
+    qteEl.id = 'qte-active-bar-wrap';
+    qteEl.style.cssText = `
+      background: linear-gradient(135deg, rgba(220, 38, 38, 0.25) 0%, rgba(153, 27, 27, 0.45) 100%);
+      border: 2px solid #ef4444;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      box-shadow: 0 0 16px rgba(239, 68, 68, 0.4);
+    `;
+
+    qteEl.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+        <span style="font-weight:900; font-size:0.95rem; color:#fca5a5; display:flex; align-items:center; gap:6px;">
+          <span style="font-size:1.15rem;">🚨</span>
+          <span>[긴급 위기 QTE 대응] 8초 내 올바른 조치를 결정하십시오!</span>
+        </span>
+        <span id="qte-countdown-badge" style="font-family:monospace; font-size:1.25rem; font-weight:900; color:#fff; background:#dc2626; padding:2px 8px; border-radius:6px; min-width:62px; text-align:center;">
+          ${_qteTimeRemaining.toFixed(1)}s
+        </span>
+      </div>
+      <div style="width: 100%; height: 9px; background: rgba(0,0,0,0.5); border-radius: 4px; overflow: hidden; border: 1px solid rgba(239, 68, 68, 0.4);">
+        <div id="qte-countdown-bar" style="width: 100%; height: 100%; background: linear-gradient(90deg, #22c55e 0%, #eab308 60%, #ef4444 100%); transition: width 0.1s linear;"></div>
+      </div>
+    `;
+
+    modalBody.insertBefore(qteEl, modalBody.firstChild);
+
+    // 타임아웃 선택지 버튼 스타일 차별화 (경고 테두리 적용)
+    if (typeof ev.timeoutChoiceIdx === 'number') {
+      const choiceButtons = modalBody.querySelectorAll('.event-choice-btn');
+      if (choiceButtons && choiceButtons[ev.timeoutChoiceIdx]) {
+        const timeoutBtn = choiceButtons[ev.timeoutChoiceIdx];
+        timeoutBtn.style.border = '1px dashed #ef4444';
+        timeoutBtn.style.background = 'rgba(239, 68, 68, 0.12)';
+        timeoutBtn.style.opacity = '0.85';
+      }
+    }
+
+    const stepMs = 100;
+    _qteTimerInterval = setInterval(() => {
+      _qteTimeRemaining = Math.max(0, _qteTimeRemaining - (stepMs / 1000));
+
+      const badgeEl = document.getElementById('qte-countdown-badge');
+      const barEl = document.getElementById('qte-countdown-bar');
+
+      if (badgeEl) {
+        badgeEl.textContent = `${_qteTimeRemaining.toFixed(1)}s`;
+        if (_qteTimeRemaining <= 3.0) {
+          badgeEl.style.background = '#991b1b';
+          badgeEl.style.color = '#fee2e2';
+        }
+      }
+
+      if (barEl) {
+        const pct = Math.max(0, (_qteTimeRemaining / _qteTotalTime) * 100);
+        barEl.style.width = `${pct}%`;
+        if (pct < 35) {
+          barEl.style.background = '#ef4444';
+        }
+      }
+
+      // 사운드 틱 (남은 3초 이하 긴박한 비프음)
+      if (_qteTimeRemaining <= 3.0 && _qteTimeRemaining > 0 && window.sound && typeof window.sound.playBeep === 'function') {
+        if (Math.round(_qteTimeRemaining * 10) % 5 === 0) {
+          window.sound.playBeep(880, 0.04, 'sawtooth');
+        }
+      }
+
+      // 타임아웃 도달
+      if (_qteTimeRemaining <= 0.001) {
+        handleQteTimeout(ev);
+      }
+    }, stepMs);
+  }
+
+  /**
+   * 8초 타임아웃 만료 시 강제 파멸 선택지 집행
+   * @param {Object} ev
+   */
+  function handleQteTimeout(ev) {
+    clearQteTimer();
+    const targetEv = ev || _activeEvent;
+    if (!targetEv) return;
+
+    const timeoutIdx = (typeof targetEv.timeoutChoiceIdx === 'number')
+      ? targetEv.timeoutChoiceIdx
+      : (targetEv.choices.length - 1);
+
+    if (window.sound && typeof window.sound.playAlarm === 'function') {
+      window.sound.playAlarm();
+    }
+
+    if (typeof window.showToast === 'function') {
+      window.showToast('⏱️ [시간 초과!] 제한시간 8초가 지나 긴급 재난이 발생했습니다!');
+    }
+
+    if (typeof window.handleSelectEventChoice === 'function') {
+      window.handleSelectEventChoice(targetEv.id, timeoutIdx);
+    } else {
+      resolveEventChoice(targetEv.id, timeoutIdx);
+    }
+  }
 
   /**
    * 1. 조건식 문자열 또는 함수를 window.state 기준으로 안전하게 평가
@@ -446,6 +582,7 @@ window.Systems = window.Systems || {};
     const ev = allEvents.find(e => e.id === eventId);
     if (!ev) return null;
 
+    clearQteTimer();
     _activeEvent = ev;
     if (state) {
       state.eventCooldowns = state.eventCooldowns || {};
@@ -466,10 +603,20 @@ window.Systems = window.Systems || {};
       } else {
         renderFallbackEventModal(ev);
       }
+
+      if (ev.isQte) {
+        startQteCountdown(ev);
+      }
     }
 
     if (window.Sound && typeof window.Sound.playEventAlert === 'function') {
       window.Sound.playEventAlert();
+    } else if (window.sound) {
+      if (ev.isQte && typeof window.sound.playAlarm === 'function') {
+        window.sound.playAlarm();
+      } else if (typeof window.sound.playBeep === 'function') {
+        window.sound.playBeep(440, 0.15, 'sawtooth');
+      }
     }
 
     return ev;
@@ -608,6 +755,7 @@ window.Systems = window.Systems || {};
    * @returns {Object|null} { eventId, choiceIdx, resultText, appliedEffects }
    */
   function resolveEventChoice(eventId, choiceIdx) {
+    clearQteTimer();
     const state = window.state;
     if (!state) return null;
 
@@ -711,7 +859,11 @@ window.Systems = window.Systems || {};
     resolveEventChoice,
     applyEventEffects,
     executeSpecialEffect,
-    getActiveEvent
+    getActiveEvent,
+    clearQteTimer,
+    startQteCountdown,
+    handleQteTimeout,
+    getQteTimeRemaining: () => _qteTimeRemaining
   };
 
   window.Systems.events = eventsSystem;
@@ -719,4 +871,5 @@ window.Systems = window.Systems || {};
   window.checkMonthlyEvents = checkMonthlyEvents;
   window.triggerEventById = triggerEventById;
   window.resolveEventChoice = resolveEventChoice;
+  window.clearQteTimer = clearQteTimer;
 })();

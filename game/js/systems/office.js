@@ -33,7 +33,64 @@ function createGpuInstance(modelKey, isMining = false, isBroken = false) {
   };
 }
 
+/**
+ * 월간 SaaS 구독자 이탈(Churn) 엔진
+ * - 기본 이탈률: 월 5% (baseChurn = 0.05)
+ * - 마케터(jobId === 'marketer') 1명당 이탈률 -2%p 감면 방어 (최소 1% 유지)
+ * - 월별 정산 시 이탈 고객 수(churnedUsers) 차감 및 P&L/콘솔 반영
+ */
+function processMonthlySaaSChurn(st) {
+  const s = st || window.state;
+  if (!s) return { churnRate: 0.05, churnedUsers: 0, remainingUsers: 0 };
+
+  const currentUsers = Number(s.saasUsers) || 0;
+  if (currentUsers <= 0) {
+    s.lastChurnedUsers = 0;
+    return { churnRate: 0.05, churnedUsers: 0, remainingUsers: 0 };
+  }
+
+  // 1. 기본 이탈률 5%
+  let churnRate = 0.05;
+
+  // 2. 마케터 고용 시 이탈 방어율 (-2%p/명, 최소 1% 유지)
+  let marketerCount = 0;
+  if (Array.isArray(s.employees)) {
+    marketerCount = s.employees.filter(e => e.jobId === 'marketer' || e.role === 'marketer').length;
+  }
+  churnRate = Math.max(0.01, +(churnRate - marketerCount * 0.02).toFixed(4));
+
+  // 3. 이탈 고객 수 계산 및 구독자 수 차감
+  const churnedUsers = Math.floor(currentUsers * churnRate);
+  s.saasUsers = Math.max(0, currentUsers - churnedUsers);
+  s.lastChurnedUsers = churnedUsers;
+  s.lastChurnRate = churnRate;
+
+  // 4. P&L 리포트 동기화
+  if (s.lastMonthReport) {
+    s.lastMonthReport.churnedUsers = churnedUsers;
+    s.lastMonthReport.churnRate = churnRate;
+  }
+
+  console.log(`[SaaS Churn] ${s.year || 2025}년 ${s.calendarMonth || 3}월 결산: 이탈률 ${(churnRate * 100).toFixed(1)}% 적용 (-${churnedUsers}명 이탈, 잔여 구독자: ${s.saasUsers}명, 마케터 방어: ${marketerCount}명)`);
+
+  return {
+    churnRate,
+    churnedUsers,
+    remainingUsers: s.saasUsers,
+    marketerCount
+  };
+}
+
 function calculateGlobalSpecs() {
+  // 월간 정산 루프와 연동하여 월 변경 시 SaaS 이탈 1회 처리
+  if (typeof state !== 'undefined' && state) {
+    if (typeof state._lastChurnMonth === 'undefined') {
+      state._lastChurnMonth = state.month;
+    } else if (state.month > state._lastChurnMonth) {
+      state._lastChurnMonth = state.month;
+      processMonthlySaaSChurn(state);
+    }
+  }
   const hrEffects = (window.Systems.hr && typeof window.Systems.hr.getHrEffects === 'function')
     ? window.Systems.hr.getHrEffects()
     : {
@@ -662,6 +719,7 @@ window.Systems.office = {
   createGpuInstance,
   calculateGlobalSpecs,
   calculateSpecsGlobalSafe,
+  processMonthlySaaSChurn,
   refreshDanggeunDeals,
   buyDanggeunDeal,
   negoDanggeunDeal,
@@ -683,6 +741,7 @@ window.getOfficeWithAvailableSlot = getOfficeWithAvailableSlot;
 window.createGpuInstance = createGpuInstance;
 window.calculateGlobalSpecs = calculateGlobalSpecs;
 window.calculateSpecsGlobalSafe = calculateSpecsGlobalSafe;
+window.processMonthlySaaSChurn = processMonthlySaaSChurn;
 window.refreshDanggeunDeals = refreshDanggeunDeals;
 window.buyDanggeunDeal = buyDanggeunDeal;
 window.negoDanggeunDeal = negoDanggeunDeal;
@@ -699,17 +758,122 @@ window.repayBankLoan = repayBankLoan;
 window.attemptKosdaqIPO = attemptKosdaqIPO;
 window.sellAllCoins = sellAllCoins;
 
+/**
+ * 사업장 전력 사용량 및 계약 전력(수전 용량) 계산 헬퍼
+ */
+function getOfficePowerUsageAndMax(office) {
+  const preset = (window.GAME_DATA && window.GAME_DATA.offices && window.GAME_DATA.offices.find(p => p.id === office.presetId)) || { maxPower: 3000 };
+  let maxPower = preset.maxPower + (office.extraPower || 0);
+  if (window.GAME_DATA && window.GAME_DATA.powerTech && office.powerTier) {
+    const pt = window.GAME_DATA.powerTech.find(p => p.id === office.powerTier);
+    if (pt && pt.capacityW) maxPower = Math.max(maxPower, pt.capacityW + (office.extraPower || 0));
+  }
 
+  let officePower = 0;
+  if (Array.isArray(office.gpus)) {
+    office.gpus.forEach(gpu => {
+      if (!gpu.isBroken) {
+        if (window.Systems.hardware && typeof window.Systems.hardware.getGpuEffectiveSpecs === 'function') {
+          const eff = window.Systems.hardware.getGpuEffectiveSpecs(gpu, office.temp);
+          officePower += eff.power;
+        } else {
+          const spec = window.GAME_DATA && window.GAME_DATA.gpus && window.GAME_DATA.gpus[gpu.model];
+          if (spec) officePower += spec.power;
+        }
+      }
+    });
+  }
+
+  return { officePower: Math.round(officePower), maxPower: Math.round(maxPower) };
+}
+
+/**
+ * 차단기(두꺼비집) 수동 리셋
+ * - 복구 시 전기기사 긴급 출장비(25만 원) 차감 (자금 부족 시 복구 불가)
+ * - 현재 사용 전력이 계약 전력을 여전히 초과하고 있다면, 30% 확률로 즉시 재트립 및 장비 과전압 경고 발생
+ */
 function resetOfficeBreaker(officeUid) {
   if (window.sound) window.sound.init();
   const office = state.offices.find(o => o.uid === officeUid);
-  if (!office || !office.isTripped) return;
+  if (!office || !office.isTripped) return false;
+
+  const calloutCost = 250000; // 전기기사 긴급 출장비 25만 원
+  if (state.money < calloutCost) {
+    const costStr = typeof window.formatKRW === 'function' ? window.formatKRW(calloutCost) : `${calloutCost.toLocaleString()}원`;
+    if (typeof showToast === 'function') {
+      showToast(`❌ 차단기 복구를 위한 전기기사 긴급 출장비(${costStr})가 부족합니다!`);
+    }
+    return false;
+  }
+
+  // 출장비 차감
+  state.money -= calloutCost;
+  if (window.sound) window.sound.playCash();
+
+  const { officePower, maxPower } = getOfficePowerUsageAndMax(office);
+  const isOverloaded = officePower > maxPower;
+
+  // 계약전력 초과 상태인 경우 30% 확률로 무리한 재가동 실패 (즉시 재트립)
+  if (isOverloaded && Math.random() < 0.3) {
+    office.isTripped = true;
+    office.tripTimer = 8.0;
+    state.ceoStress = typeof clamp === 'function'
+      ? clamp((state.ceoStress || 0) + 6, 0, 100)
+      : Math.min(100, (state.ceoStress || 0) + 6);
+
+    if (window.sound && typeof window.sound.playAlarm === 'function') {
+      window.sound.playAlarm();
+    }
+    const costStr = typeof window.formatKRW === 'function' ? window.formatKRW(calloutCost) : `${calloutCost.toLocaleString()}원`;
+    if (typeof showToast === 'function') {
+      showToast(`⚡ [과전압 경고] 사용 전력(${officePower}W)이 계약 용량(${maxPower}W)을 초과한 상태에서 무리하게 재가동하여 차단기가 즉시 다시 떨어졌습니다! (출장비 ${costStr} 손실)`);
+    }
+    if (typeof renderUI === 'function') renderUI();
+    return false;
+  }
+
+  // 정상 복구 완료
   office.isTripped = false;
   office.tripTimer = 0;
-  if (window.sound) window.sound.playBeep(750, 0.08);
-  showToast(`🔌 [${office.customName}] 차단기를 수동으로 즉시 복구했습니다! 수전 설비 증설을 권장합니다.`);
+  if (window.sound && typeof window.sound.playBeep === 'function') {
+    window.sound.playBeep(750, 0.08);
+  }
+
+  const costStr = typeof window.formatKRW === 'function' ? window.formatKRW(calloutCost) : `${calloutCost.toLocaleString()}원`;
+  const warnMsg = isOverloaded ? ` ⚠️ 경고: 현재 사용 전력(${officePower}W)이 계약 전력(${maxPower}W)을 초과 중입니다! 조속히 수전 용량을 증설하세요.` : '';
+  if (typeof showToast === 'function') {
+    showToast(`🔌 [${office.customName}] 전기기사 긴급 점검 완료! 차단기가 복구되었습니다. (-${costStr})${warnMsg}`);
+  }
+
   if (typeof renderUI === 'function') renderUI();
+  return true;
 }
 
 window.Systems.office.resetOfficeBreaker = resetOfficeBreaker;
 window.resetOfficeBreaker = resetOfficeBreaker;
+
+// advanceOneMonth P&L 리포트에 Churn 지표 자동 연동
+function hookAdvanceOneMonth() {
+  if (typeof window.advanceOneMonth === 'function' && !window.advanceOneMonth._churnHooked) {
+    const origAdvance = window.advanceOneMonth;
+    const hooked = function () {
+      const res = origAdvance.apply(this, arguments);
+      if (window.state && window.state.lastMonthReport) {
+        window.state.lastMonthReport.churnedUsers = window.state.lastChurnedUsers || 0;
+        window.state.lastMonthReport.churnRate = window.state.lastChurnRate || 0.05;
+      }
+      return res;
+    };
+    hooked._churnHooked = true;
+    window.advanceOneMonth = hooked;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  if (typeof document !== 'undefined' && document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', hookAdvanceOneMonth);
+  } else {
+    hookAdvanceOneMonth();
+  }
+  setTimeout(hookAdvanceOneMonth, 500);
+}

@@ -327,10 +327,11 @@ window.Systems = window.Systems || {};
       }
     }
 
-    // (c) 박 심사역: "그래서 매출은요?"(#2) 지표 미달 시 솔직 답변에도 -5점 압박 (기술 답변은 이미 metricBonus -10 적용)
-    if (judge.id === 'park' && !metricMet && currentQ.id === 2 && type === 'honest') {
-      specialPenalty += -5;
-      notes.push('💼 박 심사역: "그래서 실매출 숫자가 아직 없군요." (-5점)');
+    // (c) 박 심사역: Honest 답변 시 스타트업다운 스케일업 야성/비즈니스 비전 결여로 사업성 감점 (-7점)
+    if (judge.id === 'park' && type === 'honest') {
+      const noVisionPenalty = (typeof judge.noVisionPenalty === 'number') ? judge.noVisionPenalty : -7;
+      specialPenalty += noVisionPenalty;
+      notes.push(`💼 박 심사역: "스타트업다운 스케일업 야성이 전혀 없습니다! 비즈니스 비전 결여로 감점합니다." (${noVisionPenalty}점)`);
     }
 
     // 4. 블러핑 누적(lieMeter) 및 #3 불법 전용 브로커리지 플래그(grantFraud) 처리
