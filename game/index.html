@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚡ GPU FOUNDER — 한국 GPU 스타트업 타이쿤</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pretendard:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Top Global Bar (Brand + Calendar + Speed + Controls) -->
+    <header class="top-bar">
+      <div class="brand-cluster">
+        <div class="brand-logo">⚡</div>
+        <div>
+          <div class="brand-title-row">
+            <h1>GPU FOUNDER</h1>
+            <span class="corp-tag" id="corp-name">GPU 파운더스 (주)</span>
+            <span class="badge credit-badge" id="stat-credit-score">신용 A (780) · 평판 50</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="time-cluster">
+        <span class="date-pill font-mono" id="stat-date-badge">📅 2025년 3월 (0/84개월) · 🌿 환절기</span>
+        <div class="month-progress-inline">
+          <div class="month-track">
+            <div class="month-fill" id="month-progress-fill" style="width: 0%;"></div>
+          </div>
+          <span class="month-sec font-mono" id="month-timer-label">60s</span>
+        </div>
+        <div class="speed-btn-group">
+          <button id="speed-btn-0" class="speed-btn" onclick="setGameSpeed(0)" title="일시정지 (스페이스바)">⏸ 정지 [Space]</button>
+          <button id="speed-btn-1" class="speed-btn active-speed" onclick="setGameSpeed(1)" title="1배속 [1]">1x [1]</button>
+          <button id="speed-btn-2" class="speed-btn" onclick="setGameSpeed(2)" title="2배속 [2]">2x [2]</button>
+          <button id="speed-btn-4" class="speed-btn" onclick="setGameSpeed(4)" title="4배속 [3]">4x [3]</button>
+        </div>
+      </div>
+
+      <div class="controls-area">
+        <button id="pnl-btn" class="icon-btn pnl-btn-highlight" onclick="openPnlModal()" title="월간 손익계산서 및 재무현황">📊 손익계산서</button>
+        <button id="guide-btn" class="icon-btn" onclick="openGuideModal()" title="대표님 스타트업 창업 가이드">❓ 가이드</button>
+        <button id="qa-btn" class="icon-btn qa-btn-highlight" onclick="openQaModal()" title="QA 테스트 & 치트 콘솔">🛠️ QA 콘솔</button>
+        <button id="sound-btn" class="icon-btn" title="사운드 On/Off">🔊</button>
+        <button id="save-btn" class="icon-btn" title="저장">💾</button>
+        <button id="reset-btn" class="icon-btn danger" title="초기화">🔄</button>
+      </div>
+    </header>
+
+    <!-- Second Row: 6 KPI Cards Ribbon -->
+    <section class="kpi-ribbon">
+      <div class="kpi-card money clickable-kpi" onclick="openPnlModal()" title="클릭하여 월간 손익계산서(P&L) 열기 [P]">
+        <div class="kpi-top">
+          <span class="kpi-label">💰 보유 현금 <span class="kpi-hint font-mono">📊손익표</span></span>
+          <span class="kpi-sub net-profit font-mono" id="stat-net-income">+0원/초</span>
+        </div>
+        <div class="kpi-val font-mono" id="stat-money">700만 원</div>
+      </div>
+
+      <div class="kpi-card compute">
+        <div class="kpi-top">
+          <span class="kpi-label">⚡ 총 가동 연산력</span>
+          <span class="kpi-sub font-mono" id="stat-gpu-summary">1대 · PUE 1.45</span>
+        </div>
+        <div class="kpi-val font-mono text-cyan" id="stat-total-tflops">4 TFLOPS</div>
+      </div>
+
+      <div class="kpi-card crypto">
+        <div class="kpi-top">
+          <span class="kpi-label">⛏️ 코인 지갑 (ETH)</span>
+          <span class="kpi-sub font-mono" id="stat-coin-value">≈ 0원</span>
+        </div>
+        <div class="kpi-val font-mono" id="stat-coin">0.0000 ETH</div>
+      </div>
+
+      <div class="kpi-card fixed-cost">
+        <div class="kpi-top">
+          <span class="kpi-label">🧾 월 고정 지출</span>
+          <span class="kpi-sub font-mono" id="stat-loan-balance">전기·인건비·월세</span>
+        </div>
+        <div class="kpi-val font-mono text-red" id="stat-fixed-costs">-45만 원/월</div>
+      </div>
+
+      <div class="kpi-card ceo">
+        <div class="kpi-top">
+          <span class="kpi-label">👔 대표 지분 & 멘탈</span>
+          <span class="kpi-sub font-mono" id="stat-hr-mini">직원 0명 · 사기 80%</span>
+        </div>
+        <div class="kpi-val font-mono text-amber" id="stat-ceo-status">지분 100% · 스트레스 10%</div>
+      </div>
+
+      <div class="kpi-card valuation">
+        <div class="kpi-top">
+          <span class="kpi-label">🦄 추정 기업가치</span>
+          <span class="kpi-sub font-mono" id="stat-ipo-badge">비상장 법인</span>
+        </div>
+        <div class="kpi-val font-mono text-green" id="stat-valuation">5,000만 원</div>
+      </div>
+    </section>
+
+    <!-- LIVE 2D PIXEL ART GAME STAGE VIEWPORT (Kairosoft / Game Dev Tycoon Style) -->
+    <section class="pixel-stage-dock">
+      <div class="pixel-stage-frame">
+        <div class="pixel-stage-topbar">
+          <div class="pixel-stage-title" id="pixel-stage-title">🕹️ 🗺️ 서울 스타트업 상가 거리 (A/D 키 또는 클릭 이동)</div>
+          <div class="pixel-stage-tabs" id="pixel-stage-office-tabs"></div>
+        </div>
+        <canvas id="pixel-stage-canvas" width="320" height="160"></canvas>
+      </div>
+
+      <div class="pixel-hud-side">
+        <div class="pixel-quest-box">
+          <div class="pixel-box-title">🚩 CURRENT QUEST (마일스톤)</div>
+          <div class="pixel-quest-content" id="quest-banner">
+            🎯 <b>STEP 1/6:</b> [지원사업] 탭에서 예비창업패키지 발표평가에 도전하세요!
+          </div>
+        </div>
+
+        <div class="pixel-quick-actions">
+          <button class="pixel-arcade-btn cyan" onclick="document.querySelector('[data-tab=tab-procure]').click()">🥕 당근 GPU 줍기</button>
+          <button class="pixel-arcade-btn green" onclick="document.querySelector('[data-tab=tab-finance]').click()">🎤 지원금/VC 피칭</button>
+          <button class="pixel-arcade-btn amber" onclick="document.querySelector('[data-tab=tab-hr]').click()">👥 개발자 채용</button>
+          <button class="pixel-arcade-btn purple" onclick="openOfficeModal()">🏢 새 사무실 이사</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Navigation Bar -->
+    <nav class="main-nav">
+      <div class="nav-tabs-left">
+        <button class="nav-tab-btn active" data-tab="tab-offices">🏢 사업장 · 서버실 (<span id="office-count-badge">1</span>)</button>
+        <button class="nav-tab-btn" data-tab="tab-procure">🛒 GPU 조달 (<span id="slot-avail-badge">1/6</span>)</button>
+        <button class="nav-tab-btn" data-tab="tab-business">💼 수익 포트폴리오</button>
+        <button class="nav-tab-btn" data-tab="tab-hr">👥 인사 · 복지 (<span id="hr-count-badge">0</span>)</button>
+        <button class="nav-tab-btn" data-tab="tab-finance">🏛️ 지원사업 · 대출 · VC</button>
+        <button class="nav-tab-btn" data-tab="tab-market">📈 거래소 · 엔딩 도감</button>
+      </div>
+    </nav>
+
+    <!-- Main Dynamic Content Body -->
+    <main class="main-body">
+
+      <!-- TAB 1: Multi-Office & Infrastructure Management -->
+      <section class="tab-page active" id="tab-offices">
+        <div class="page-header-row">
+          <div>
+            <h2>🏢 보유 사업장 & 서버 랙 엔지니어링</h2>
+            <p class="sub-desc">사업장별 전력 부하와 온도를 관리하세요. 장착된 GPU의 <b>[🔧 튜닝]</b> 버튼으로 언더볼팅/오버클럭/수랭 개조를 하거나 <b>[🏗️ 쿨링·전력 설비]</b>를 증설할 수 있습니다.</p>
+          </div>
+          <button class="primary-btn" id="open-lease-modal-btn">➕ 신규 사무실 / IDC / 데이터센터 임대</button>
+        </div>
+
+        <div class="offices-container" id="offices-list"></div>
+      </section>
+
+      <!-- TAB 2: GPU Procurement -->
+      <section class="tab-page" id="tab-procure">
+        <div class="procure-top-bar">
+          <div class="procure-subnav">
+            <button class="sub-tab-btn active" data-sub="procure-used">🥕 당근 중고장터 (실시간 꿀매물)</button>
+            <button class="sub-tab-btn" data-sub="procure-new">📦 공식 총판 신품 발주</button>
+            <button class="sub-tab-btn" data-sub="procure-lease">🤝 엔터프라이즈 랙 리스</button>
+          </div>
+          <div class="procure-capacity-pill font-mono" id="procure-capacity-info">
+            📦 랙 슬롯: 1 / 6대 사용 중 (여유 5대) · ⚡ 전력 여유: 2,880W
+          </div>
+        </div>
+
+        <div class="procure-content active" id="procure-used">
+          <div class="market-refresh-bar">
+            <span>🥕 당근마켓 동네 중고 그래픽카드 매물 · 자동 갱신: <b id="used-refresh-timer" class="font-mono">15s</b></span>
+            <button class="small-btn" id="force-refresh-market-btn">🔄 퀵비 내고 즉시 새로고침 (5만 원)</button>
+          </div>
+          <div class="used-deals-grid" id="used-deals-grid"></div>
+        </div>
+
+        <div class="procure-content" id="procure-new">
+          <div class="cards-grid" id="new-gpu-grid"></div>
+        </div>
+
+        <div class="procure-content" id="procure-lease">
+          <div class="info-box" style="margin-bottom: 14px; background: var(--bg-panel); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+            💡 <b>엔터프라이즈 하드웨어 리스:</b> 초기 구매 비용 없이 보증금과 월 리스료만으로 A100/H100 4대 묶음 클러스터를 즉시 투입합니다. (빈 슬롯 최소 1칸 이상 필요)
+          </div>
+          <div class="cards-grid" id="lease-gpu-grid"></div>
+        </div>
+      </section>
+
+      <!-- TAB 3: Business & Workload Allocation -->
+      <section class="tab-page" id="tab-business">
+        <div class="page-header-row">
+          <div>
+            <h2>💼 GPU 연산력 수익 포트폴리오 배분</h2>
+            <p class="sub-desc">보유한 총 연산력(TFLOPS)을 4가지 수익 모델에 배분합니다. 슬라이더 조절 시 합계가 100%를 넘지 않도록 자동 밸런싱됩니다.</p>
+          </div>
+          <div class="allocation-summary-pill font-mono">
+            총 배분율: <b id="alloc-total-pct">100%</b> / 100% (<span id="alloc-status-text">✅ 최적 가동 중</span>)
+          </div>
+        </div>
+
+        <!-- Visual Stacked Allocation Bar -->
+        <div class="alloc-visual-bar">
+          <div id="alloc-bar-crypto" class="alloc-seg seg-crypto" style="width:30%;" title="채굴"></div>
+          <div id="alloc-bar-cloud" class="alloc-seg seg-cloud" style="width:70%;" title="클라우드"></div>
+          <div id="alloc-bar-saas" class="alloc-seg seg-saas" style="width:0%;" title="SaaS"></div>
+          <div id="alloc-bar-corp" class="alloc-seg seg-corp" style="width:0%;" title="빅테크 LLM"></div>
+        </div>
+
+        <div id="active-modifiers-bar" class="modifiers-strip"></div>
+
+        <div class="workloads-grid">
+          <div class="workload-card">
+            <div class="workload-header">
+              <span class="workload-icon">⛏️</span>
+              <div>
+                <h3>크립토(이더리움) 채굴</h3>
+                <span class="sub-desc">실시간 코인을 채굴해 지갑에 적립 (80%+ 1년 유지 & 무매도 100억 시 히든엔딩)</span>
+              </div>
+            </div>
+            <div class="workload-stats">
+              <div>할당 연산력: <b id="wl-crypto-tflops">0 TFLOPS</b></div>
+              <div>예상 채굴량: <b id="wl-crypto-rate" class="font-mono text-cyan">0.00000 ETH/초</b></div>
+            </div>
+            <div class="slider-group">
+              <input type="range" class="workload-slider" id="slider-crypto" min="0" max="100" value="30">
+              <span class="slider-val" id="val-crypto">30%</span>
+            </div>
+          </div>
+
+          <div class="workload-card">
+            <div class="workload-header">
+              <span class="workload-icon">☁️</span>
+              <div>
+                <h3>AI 클라우드 스팟 렌탈 (Vast.ai형)</h3>
+                <span class="sub-desc">대학원생·연구원 시간당 연산 대여 (6월·12월 기말 시즌 수익 1.4배 폭증)</span>
+              </div>
+            </div>
+            <div class="workload-stats">
+              <div>할당 연산력: <b id="wl-cloud-tflops">0 TFLOPS</b></div>
+              <div>실시간 대여료: <b id="wl-cloud-rate" class="font-mono text-green">+0원/초</b></div>
+            </div>
+            <div class="slider-group">
+              <input type="range" class="workload-slider" id="slider-cloud" min="0" max="100" value="70">
+              <span class="slider-val" id="val-cloud">70%</span>
+            </div>
+          </div>
+
+          <div class="workload-card">
+            <div class="workload-header">
+              <span class="workload-icon">📱</span>
+              <div>
+                <h3>자체 B2C AI SaaS 서비스</h3>
+                <span class="sub-desc">마케팅으로 구독자를 모으고 AI 리서처/마케터로 수익률을 극대화합니다.</span>
+              </div>
+            </div>
+            <div class="workload-stats">
+              <div>활성 구독자: <b id="saas-users" class="font-mono">0명</b></div>
+              <div>구독 순수익: <b id="wl-saas-rate" class="font-mono text-green">+0원/초</b></div>
+            </div>
+            <div class="slider-group">
+              <input type="range" class="workload-slider" id="slider-saas" min="0" max="100" value="0">
+              <span class="slider-val" id="val-saas">0%</span>
+            </div>
+            <div class="saas-action-row">
+              <button class="small-btn" id="saas-marketing-btn">📢 SNS 퍼포먼스 마케팅 집행 (100만 원 / +유저 500명)</button>
+            </div>
+          </div>
+
+          <div class="workload-card">
+            <div class="workload-header">
+              <span class="workload-icon">🏢</span>
+              <div>
+                <h3>빅테크 LLM 사전학습 전용 클러스터</h3>
+                <span class="sub-desc">초고연산력 전용. 할당 연산력 800 TFLOPS 이상일 때 고정 대박 계약 수익</span>
+              </div>
+            </div>
+            <div class="workload-stats">
+              <div>할당 연산력: <b id="wl-corp-tflops">0 TFLOPS</b></div>
+              <div>장기 계약금: <b id="wl-corp-rate" class="font-mono text-green">+0원/초</b></div>
+            </div>
+            <div class="slider-group">
+              <input type="range" class="workload-slider" id="slider-corp" min="0" max="100" value="0">
+              <span class="slider-val" id="val-corp">0%</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: HR, Hiring, Welfare & Burnout -->
+      <section class="tab-page" id="tab-hr">
+        <div class="page-header-row">
+          <div>
+            <h2>👥 인사 · 채용 · 스톡옵션 · 사내 복지</h2>
+            <p class="sub-desc">직원을 영입해 가동률·수익·정부과제 합격률을 높이세요. 번아웃 방치 시 집단 퇴사(B4 배드엔딩)가 발생합니다!</p>
+          </div>
+          <div class="allocation-summary-pill font-mono" id="hr-summary-pill">
+            재직 0명 · 평균 사기 80% · 번아웃 10%
+          </div>
+        </div>
+
+        <div class="hr-two-col">
+          <!-- Left: Current Roster & Welfare -->
+          <div class="hr-col">
+            <div class="finance-section">
+              <div class="section-title-row">
+                <h3>📋 재직 중인 임직원 명단</h3>
+                <span class="tag tag-green">매월 급여 자동 정산</span>
+              </div>
+              <div class="hr-cards-stack" id="hr-roster-list"></div>
+            </div>
+
+            <div class="finance-section">
+              <div class="section-title-row">
+                <h3>☕ 사내 복지 & 조직 문화 정책</h3>
+                <span class="tag tag-purple">사기 · 번아웃 관리</span>
+              </div>
+              <div class="hr-welfare-list" id="hr-welfare-grid"></div>
+            </div>
+          </div>
+
+          <!-- Right: 9 Job Roles Hiring -->
+          <div class="hr-col">
+            <div class="finance-section">
+              <div class="section-title-row">
+                <h3>🔍 신규 인력 채용 (9대 직군)</h3>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="sub-desc">채용 채널:</span>
+                  <select id="hr-channel-select" class="channel-select"></select>
+                </div>
+              </div>
+              <div class="grants-list" id="hr-jobs-grid"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: Finance, Government Grants Pitching, Loans, VC, IPO -->
+      <section class="tab-page" id="tab-finance">
+        <div class="finance-grid">
+          <div class="finance-section">
+            <div class="section-title-row">
+              <h3>🏛️ 정부지원사업 & R&D 발표평가 (압박 면접 RPG)</h3>
+              <span class="tag tag-green">무상 국고보조금 · 블러핑 감사 주의!</span>
+            </div>
+            <p class="sub-desc">김 교수·박 심사역·이 사무관의 날카로운 질문 3~5개에 답변해 합격선을 넘기세요! (행정 전담 직원 보유 시 가산점 및 감사 방어)</p>
+            <div class="grants-list" id="grants-list"></div>
+          </div>
+
+          <div class="finance-two-col">
+            <div class="finance-section">
+              <div class="section-title-row">
+                <h3>🦄 VC 투자 유치 & 코스닥 IPO 상장</h3>
+                <span class="tag tag-purple">스케일업 & 엑싯(Exit)</span>
+              </div>
+              <div class="vc-rounds-list" id="vc-rounds-list"></div>
+            </div>
+
+            <div class="finance-section">
+              <div class="section-title-row">
+                <h3>🏦 정책 금융 융자 & 비상 대출</h3>
+                <span class="tag tag-blue">언제든 원금 상환 가능</span>
+              </div>
+              <div class="loans-list" id="loans-list"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: Market Exchange & Multi-Ending Collection -->
+      <section class="tab-page" id="tab-market">
+        <div class="market-view-container">
+          <div class="exchange-panel">
+            <h3>📈 크립토 거래소 & 실시간 시세 차트</h3>
+            <p class="sub-desc">채굴한 이더리움(ETH)을 고점에 매도해 현금화하거나, 무매도로 100억 원어치를 모아 [코인 고래 히든엔딩]을 달성하세요!</p>
+
+            <div class="price-big-display">
+              <span class="coin-name">ETH / KRW</span>
+              <span class="coin-price-current font-mono" id="current-coin-price">425만 원</span>
+              <span class="price-change-badge" id="coin-change-badge">실시간 변동 중</span>
+            </div>
+
+            <div class="chart-box">
+              <canvas id="crypto-chart" width="600" height="180"></canvas>
+            </div>
+
+            <div class="sell-coin-action-box">
+              <div class="wallet-balance-row">
+                <span>보유 코인: <b id="market-wallet-eth">0.0000 ETH</b></span>
+                <span>환전 예상액: <b id="market-wallet-krw" class="text-green font-mono">0원</b></span>
+              </div>
+              <div class="exchange-btn-row">
+                <button class="primary-btn" id="sell-all-coin-btn">💰 전액 시장가 현금 매도 (환전)</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="hw-index-panel">
+            <h3>🏁 멀티 엔딩 도감 (배드 4 · 히든 2 · 트루 2)</h3>
+            <p class="sub-desc">최대 84개월(7년) 동안 달성한 엔딩이 영구 기록됩니다.</p>
+            <div id="endings-collection-grid" style="display:flex; flex-direction:column; gap:8px; overflow-y:auto; max-height: 380px;"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Modals -->
+    <div id="office-modal" class="modal-overlay">
+      <div class="modal-window">
+        <div class="modal-header">
+          <h3>🏢 신규 사업장 / 데이터센터 임대 계약</h3>
+          <button class="modal-close-btn" id="close-office-modal">&times;</button>
+        </div>
+        <div class="modal-body" id="available-offices-list"></div>
+      </div>
+    </div>
+
+    <div id="tuning-modal" class="modal-overlay">
+      <div class="modal-window" style="max-width: 780px;">
+        <div class="modal-header">
+          <h3>🔧 GPU 개별 하드웨어 튜닝 · 개조 · 리볼링 수리</h3>
+          <button class="modal-close-btn" onclick="document.getElementById('tuning-modal').classList.remove('show')">&times;</button>
+        </div>
+        <div class="modal-body" id="tuning-modal-body"></div>
+      </div>
+    </div>
+
+    <div id="infra-modal" class="modal-overlay">
+      <div class="modal-window" style="max-width: 840px;">
+        <div class="modal-header">
+          <h3>🏗️ 사업장 쿨링 테크트리 (T1~소양강) & 수전 설비 (P1~P6)</h3>
+          <button class="modal-close-btn" onclick="document.getElementById('infra-modal').classList.remove('show')">&times;</button>
+        </div>
+        <div class="modal-body" id="infra-modal-body"></div>
+      </div>
+    </div>
+
+    <div id="event-modal" class="modal-overlay">
+      <div class="modal-window" style="max-width: 640px;">
+        <div class="modal-header">
+          <h3>⚡ 한국 스타트업 리얼 딜레마 이벤트</h3>
+        </div>
+        <div class="modal-body" id="event-modal-body"></div>
+      </div>
+    </div>
+
+    <div id="pitch-modal" class="modal-overlay">
+      <div class="modal-window" style="max-width: 680px;">
+        <div class="modal-header">
+          <h3>🎤 심사위원 압박 질의응답 (IR / 발표평가)</h3>
+          <button class="modal-close-btn" onclick="closePitchingModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="pitch-modal-body"></div>
+      </div>
+    </div>
+
+    <div id="ending-modal" class="modal-overlay">
+      <div class="modal-window" style="max-width: 680px;">
+        <div class="modal-header">
+          <h3>🏁 GPU FOUNDER — 최종 엔딩 리포트</h3>
+        </div>
+        <div class="modal-body" id="ending-modal-body"></div>
+      </div>
+    </div>
+
+    <div id="qa-modal" class="modal-overlay">
+      <div class="modal-window" style="max-width: 720px;">
+        <div class="modal-header">
+          <h3>🛠️ QA 테스트 & 시뮬레이션 검증 콘솔</h3>
+          <button class="modal-close-btn" onclick="document.getElementById('qa-modal').classList.remove('show')">&times;</button>
+        </div>
+        <div class="modal-body" id="qa-modal-body"></div>
+      </div>
+    </div>
+
+    <!-- Monthly P&L Financial Statement Modal -->
+    <div id="pnl-modal" class="modal-overlay">
+      <div class="modal-window" style="max-width: 760px;">
+        <div class="modal-header">
+          <h3>📊 GPU FOUNDER — 월간 손익계산서 & 재무현황</h3>
+          <button class="modal-close-btn" onclick="document.getElementById('pnl-modal').classList.remove('show')">&times;</button>
+        </div>
+        <div class="modal-body" id="pnl-modal-body"></div>
+      </div>
+    </div>
+
+    <!-- Startup Founder Onboarding Guide Modal -->
+    <div id="guide-modal" class="modal-overlay">
+      <div class="modal-window" style="max-width: 740px;">
+        <div class="modal-header">
+          <h3>🚀 GPU 파운더스 — 대표님 필수 창업 가이드 & 로드맵</h3>
+          <button class="modal-close-btn" onclick="document.getElementById('guide-modal').classList.remove('show')">&times;</button>
+        </div>
+        <div class="modal-body" id="guide-modal-body"></div>
+      </div>
+    </div>
+
+    <!-- GPU Move / Transfer Modal -->
+    <div id="gpu-move-modal" class="modal-overlay">
+      <div class="modal-window" style="max-width: 580px;">
+        <div class="modal-header">
+          <h3>🚚 GPU 사업장 이전 배치</h3>
+          <button class="modal-close-btn" onclick="document.getElementById('gpu-move-modal').classList.remove('show')">&times;</button>
+        </div>
+        <div class="modal-body" id="gpu-move-modal-body"></div>
+      </div>
+    </div>
+
+    <footer class="footer-ticker">
+      <div class="ticker-label">LIVE NEWS</div>
+      <div class="ticker-text" id="news-ticker">GPU FOUNDER 창업! 당근마켓 중고 그래픽카드를 확보하거나 예비창업패키지 발표평가에 도전하세요.</div>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- 1. Data Layer -->
+  <script src="data/economy.js"></script>
+  <script src="data/staff.js"></script>
+  <script src="data/events.js"></script>
+  <script src="data/pitching.js"></script>
+  <script src="data/hardware.js"></script>
+  <script src="data/endings.js"></script>
+
+  <!-- 2. Core Layer -->
+  <script src="js/core/sound.js"></script>
+  <script src="js/core/utils.js"></script>
+  <script src="js/core/state.js"></script>
+
+  <!-- 3. Systems Layer -->
+  <script src="js/systems/office.js"></script>
+  <script src="js/systems/hr.js"></script>
+  <script src="js/systems/events.js"></script>
+  <script src="js/systems/pitching.js"></script>
+  <script src="js/systems/hardware.js"></script>
+  <script src="js/systems/endings.js"></script>
+
+  <!-- 4. UI & Main Entry -->
+  <script src="js/ui/pixel_stage.js"></script>
+  <script src="js/ui/modals.js"></script>
+  <script src="js/ui/render.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
